@@ -10,6 +10,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [socket, setSocket] = useState(null);
   const [peer, setPeer] = useState(null);
+  const [peerReady, setPeerReady] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -21,8 +22,24 @@ export function AuthProvider({ children }) {
         setUser(data.user);
         const s = createSocketConnection(token);
         setSocket(s);
+        
         const p = createPeer(data.user.id);
         setPeer(p);
+        
+        // Wait for peer to be ready
+        p.on('open', () => {
+          if (isMounted) {
+            setPeerReady(true);
+          }
+        });
+        
+        p.on('error', (error) => {
+          console.error('Peer connection error:', error);
+          if (isMounted) {
+            setPeerReady(false);
+          }
+        });
+        
         return () => {
           s?.disconnect();
           p?.destroy();
@@ -61,9 +78,10 @@ export function AuthProvider({ children }) {
     peer?.destroy();
     setSocket(null);
     setPeer(null);
+    setPeerReady(false);
   }
 
-  const value = useMemo(() => ({ token, user, login, signup, logout, socket, peer }), [token, user, socket, peer]);
+  const value = useMemo(() => ({ token, user, login, signup, logout, socket, peer, peerReady }), [token, user, socket, peer, peerReady]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
