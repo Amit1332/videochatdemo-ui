@@ -19,10 +19,7 @@ export function usePeerCall(peer) {
 
   useEffect(() => {
     if (!peer) return;
-    
     function onCall(call) {
-      if (!call) return;
-      
       setInboundCallerId(call.peer);
       navigator.mediaDevices.getUserMedia({ audio: true, video: true })
         .then(stream => {
@@ -33,64 +30,28 @@ export function usePeerCall(peer) {
           call.on('close', cleanupCall);
           call.on('error', cleanupCall);
         })
-        .catch(error => {
-          console.error('Error answering call:', error);
-          cleanupCall();
-        });
+        .catch(console.error);
     }
-    
-    try {
-      peer.on('call', onCall);
-      return () => {
-        if (peer && peer.off) {
-          peer.off('call', onCall);
-        }
-      };
-    } catch (error) {
-      console.error('Error setting up peer call listener:', error);
-    }
+    peer.on('call', onCall);
+    return () => {
+      peer.off('call', onCall);
+    };
   }, [peer]);
 
   async function startCall(targetPeerId, withVideo = true) {
-    if (!peer) {
-      throw new Error('Peer connection not available');
-    }
-    
-    // Check if peer is ready
-    if (peer.disconnected || !peer.id) {
-      throw new Error('Peer connection not ready');
-    }
-    
-    try {
-      const constraints = { audio: true, video: withVideo };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      setLocalStream(stream);
-      
-      const call = peer.call(targetPeerId, stream);
-      if (!call) {
-        throw new Error('Failed to create call');
-      }
-      
-      setCurrentCall(call);
-      
-      return new Promise((resolve, reject) => {
-        call.on('stream', remote => {
-          setRemoteStream(remote);
-          resolve(call);
-        });
-        call.on('close', () => {
-          cleanupCall();
-          reject(new Error('Call ended'));
-        });
-        call.on('error', (error) => {
-          cleanupCall();
-          reject(error);
-        });
+    const constraints = { audio: true, video: withVideo };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    setLocalStream(stream);
+    const call = peer.call(targetPeerId, stream);
+    setCurrentCall(call);
+    return new Promise((resolve) => {
+      call.on('stream', remote => {
+        setRemoteStream(remote);
+        resolve(call);
       });
-    } catch (error) {
-      console.error('Error starting call:', error);
-      throw error;
-    }
+      call.on('close', cleanupCall);
+      call.on('error', cleanupCall);
+    });
   }
 
   function endCall() {

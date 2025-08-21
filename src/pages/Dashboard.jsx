@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { usePeerCall } from '../hooks/usePeerCall.js';
 
 export default function Dashboard() {
-  const { user, socket, peer, peerReady } = useAuth();
+  const { user, socket, peer } = useAuth();
   const [users, setUsers] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [filter, setFilter] = useState('');
@@ -45,16 +45,15 @@ export default function Dashboard() {
         </div>
       </aside>
       <section style={{ flex: 1, padding: 16 }}>
-        <CallPanel targetUserId={selectedUserId} peer={peer} peerReady={peerReady} />
+        <CallPanel targetUserId={selectedUserId} peer={peer} />
       </section>
     </div>
   );
 }
 
-function CallPanel({ targetUserId, peer, peerReady }) {
+function CallPanel({ targetUserId, peer }) {
   const { user } = useAuth();
   const { localStream, remoteStream, startCall, endCall } = usePeerCall(peer);
-  const [callError, setCallError] = useState('');
 
   useEffect(() => {
     return () => { endCall(); };
@@ -77,45 +76,24 @@ function CallPanel({ targetUserId, peer, peerReady }) {
   if (!targetUserId) return <div>Select a user to call.</div>;
 
   async function callAudio() {
-    try {
-      setCallError('');
-      await startCall(targetUserId, false);
-    } catch (error) {
-      console.error('Audio call failed:', error);
-      setCallError(error.message || 'Failed to start audio call');
-    }
+    await startCall(targetUserId, false);
   }
-  
   async function callVideo() {
-    try {
-      setCallError('');
-      await startCall(targetUserId, true);
-    } catch (error) {
-      console.error('Video call failed:', error);
-      setCallError(error.message || 'Failed to start video call');
-    }
+    await startCall(targetUserId, true);
   }
 
   return (
     <div>
       <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-        <button onClick={callAudio} disabled={!peerReady}>Call Audio</button>
-        <button onClick={callVideo} disabled={!peerReady}>Call Video</button>
-        <button onClick={endCall} disabled={!peerReady}>End Call</button>
+        <button onClick={callAudio} disabled={!peer}>Call Audio</button>
+        <button onClick={callVideo} disabled={!peer}>Call Video</button>
+        <button onClick={endCall} disabled={!peer}>End Call</button>
       </div>
-      {callError && (
-        <div style={{ color: 'red', marginBottom: 12, padding: 8, background: '#fee', border: '1px solid #fcc', borderRadius: 4 }}>
-          {callError}
-        </div>
-      )}
       <div style={{ display: 'flex', gap: 12 }}>
         <video id="localVideo" autoPlay muted playsInline style={{ width: '40%', background: '#000' }} />
         <video id="remoteVideo" autoPlay playsInline style={{ width: '60%', background: '#000' }} />
       </div>
-      <div style={{ marginTop: 12, color: '#6b7280' }}>
-        You: {user?.name} • Calling: {targetUserId}
-        {!peerReady && <span style={{ color: 'orange' }}> • Peer connection not ready</span>}
-      </div>
+      <div style={{ marginTop: 12, color: '#6b7280' }}>You: {user?.name}  Calling: {targetUserId}</div>
     </div>
   );
 }
