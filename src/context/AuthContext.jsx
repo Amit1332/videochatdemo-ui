@@ -29,7 +29,7 @@ export function AuthProvider({ children }) {
         };
       } catch (e) {
         console.error(e);
-        logout();
+        // logout();
       }
     }
     const cleanup = init();
